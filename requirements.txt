@@ -1,3 +1,4 @@
 discord.py
-google-generativeai
-Flask
+google-genai
+nest_asyncio
+flask
