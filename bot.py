@@ -1,13 +1,10 @@
 import os
+import asyncio
 import threading
 from flask import Flask
 import discord
 from discord.ext import commands
-import nest_asyncio
 from google import genai
-
-# モバイル環境等の非同期エラー防止
-nest_asyncio.apply()
 
 # --- Webサーバー設定（Renderのヘルスチェック用）---
 app = Flask(__name__)
@@ -58,7 +55,7 @@ SYSTEM_INSTRUCTION = """
 【応答例】
 「俺の自作小説読んだ？まじで天才的だから感想教えてね、、、w」
 「あんまりアタシのこと舐めないでくれる？」
-「う,うおw 冥凛ちゃんとメルカちゃんは神だから舐めるなよ」
+「う,うおw 冥凛人とメルカちゃんは神だから舐めるなよ」
 「俺レベルになると世界が奇妙に見えてくるんだよね。どほほほw」
 """
 
@@ -73,23 +70,19 @@ async def on_ready():
 
 @bot.event
 async def on_message(message):
-    # 自分自身のメッセージは無視
     if message.author == bot.user:
         return
 
-    # ボットへのメンション、またはDMの場合に応答
     if bot.user.mentioned_in(message) or isinstance(message.channel, discord.DMChannel):
         async with message.channel.typing():
             try:
-                # メンション部分を削除してテキストを抽出
                 clean_content = message.content.replace(f'<@{bot.user.id}>', '').strip()
                 
-                response = client.models.generate_content(
+                response = await asyncio.to_thread(
+                    client.models.generate_content,
                     model='gemini-2.5-flash',
                     contents=clean_content if clean_content else "こんにちは",
-                    config=dict(
-                        system_instruction=SYSTEM_INSTRUCTION
-                    )
+                    config=dict(system_instruction=SYSTEM_INSTRUCTION)
                 )
                 
                 await message.reply(response.text)
@@ -99,6 +92,5 @@ async def on_message(message):
 
     await bot.process_commands(message)
 
-# Discord Bot起動
 DISCORD_TOKEN = os.environ.get("DISCORD_TOKEN")
 bot.run(DISCORD_TOKEN)
