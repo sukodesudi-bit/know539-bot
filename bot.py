@@ -1,7 +1,6 @@
 import os
 import asyncio
 import threading
-import traceback
 from flask import Flask
 import discord
 from discord.ext import commands
@@ -81,10 +80,10 @@ async def on_message(message):
                 clean_content = message.content.replace(f'<@{bot.user.id}>', '').strip()
                 user_input = clean_content if clean_content else "こんにちは"
                 
-                # generate_contentを使用し、例外を画面（ログ）に出力
+                # 安定して動く gemini-1.5-flash に設定
                 def generate():
                     return client.models.generate_content(
-                        model='gemini-2.5-flash',
+                        model='gemini-1.5-flash',
                         contents=user_input,
                         config=types.GenerateContentConfig(
                             system_instruction=SYSTEM_INSTRUCTION
@@ -94,9 +93,7 @@ async def on_message(message):
                 response = await asyncio.to_thread(generate)
                 await message.reply(response.text)
             except Exception as e:
-                print("=== DETAILED ERROR LOG ===")
-                traceback.print_exc()
-                print("==========================")
+                print(f"Error: {e}")
                 await message.reply("う、うおw なんかエラー出たんだが、、、w")
 
     await bot.process_commands(message)
