@@ -1,15 +1,12 @@
 import os
+import asyncio
 import threading
-import nest_asyncio
 from flask import Flask
 import discord
 from discord.ext import commands
 from google import genai
 
-# 非同期処理の衝突防止
-nest_asyncio.apply()
-
-# --- 1. Webサーバー設定（Flaskをバックグラウンド実行） ---
+# --- 1. Webサーバー設定 ---
 app = Flask(__name__)
 
 @app.route('/')
@@ -90,17 +87,21 @@ async def on_message(message):
     if is_mentioned or is_reply_to_bot:
         print(f'メッセージ受信: {message.content}')
         
-        # 「入力中...」を表示する演出
         async with message.channel.typing():
             try:
                 clean_content = message.content.replace(f'<@{bot.user.id}>', '').strip()
                 user_input = clean_content if clean_content else "こんにちは"
 
-                response = client.models.generate_content(
-                    model='gemini-2.5-flash',
-                    contents=user_input,
-                    config={'system_instruction': SYSTEM_INSTRUCTION}
-                )
+                # 同期関数としてGemini API呼出しを定義
+                def generate():
+                    return client.models.generate_content(
+                        model='gemini-2.5-flash',
+                        contents=user_input,
+                        config={'system_instruction': SYSTEM_INSTRUCTION}
+                    )
+
+                # 別スレッドで安全に実行
+                response = await asyncio.to_thread(generate)
                 
                 await message.reply(response.text)
                 print('返信成功！')
@@ -108,5 +109,5 @@ async def on_message(message):
                 print(f'APIエラー発生: {e}')
                 await message.reply(f"う、うおw エラー出たんだが、、、w\n```{e}```")
 
-# ボットを起動
+# ボット起動
 bot.run(DISCORD_TOKEN)
