@@ -80,20 +80,20 @@ async def on_message(message):
                 clean_content = message.content.replace(f'<@{bot.user.id}>', '').strip()
                 user_input = clean_content if clean_content else "こんにちは"
                 
-                # 安定して動く gemini-1.5-flash に設定
+                # Chatオブジェクトを生成して安全に応答を取得
                 def generate():
-                    return client.models.generate_content(
+                    chat = client.chats.create(
                         model='gemini-1.5-flash',
-                        contents=user_input,
                         config=types.GenerateContentConfig(
                             system_instruction=SYSTEM_INSTRUCTION
                         )
                     )
+                    return chat.send_message(user_input)
 
                 response = await asyncio.to_thread(generate)
                 await message.reply(response.text)
             except Exception as e:
-                print(f"Error: {e}")
+                print(f"Error details: {e}")
                 await message.reply("う、うおw なんかエラー出たんだが、、、w")
 
     await bot.process_commands(message)
