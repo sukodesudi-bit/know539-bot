@@ -17,7 +17,6 @@ def run_web():
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port, use_reloader=False)
 
-# バックグラウンドでWebサーバーを動かす
 threading.Thread(target=run_web, daemon=True).start()
 
 
@@ -95,7 +94,7 @@ async def on_message(message):
 
                 def generate():
                     return client.models.generate_content(
-                        model='gemini-2.0-flash',
+                        model='gemini-3.6-flash',
                         contents=user_input,
                         config={'system_instruction': SYSTEM_INSTRUCTION}
                     )
