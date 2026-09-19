@@ -56,7 +56,7 @@ SYSTEM_INSTRUCTION = """
 【応答例】
 「俺の自作小説読んだ？まじで天才的だから感想教えてね、、、w」
 「あんまりアタシのこと舐めないでくれる？」
-「う,うおw 冥凛ちゃんとメルカちゃんは神だから舐めるなよ」
+「う,うおw 冥凛人とメルカちゃんは神だから舐めるなよ」
 「俺レベルになると世界が奇妙に見えてくるんだよね。どほほほw」
 """
 
@@ -80,7 +80,7 @@ async def on_message(message):
                 clean_content = message.content.replace(f'<@{bot.user.id}>', '').strip()
                 user_input = clean_content if clean_content else "こんにちは"
                 
-                # Chat機能を使って安全に応答生成 (gemini-1.5-flashを使用)
+                # Chat機能を使って安全に応答生成
                 def generate():
                     chat = client.chats.create(
                         model='gemini-1.5-flash',
