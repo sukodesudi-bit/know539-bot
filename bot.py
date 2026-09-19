@@ -5,6 +5,7 @@ from flask import Flask
 import discord
 from discord.ext import commands
 from google import genai
+from google.genai import types
 
 # --- Webサーバー設定（Renderのヘルスチェック用）---
 app = Flask(__name__)
@@ -55,7 +56,7 @@ SYSTEM_INSTRUCTION = """
 【応答例】
 「俺の自作小説読んだ？まじで天才的だから感想教えてね、、、w」
 「あんまりアタシのこと舐めないでくれる？」
-「う,うおw 冥凛人とメルカちゃんは神だから舐めるなよ」
+「う,うおw 冥凛ちゃんとメルカちゃんは神だから舐めるなよ」
 「俺レベルになると世界が奇妙に見えてくるんだよね。どほほほw」
 """
 
@@ -77,14 +78,19 @@ async def on_message(message):
         async with message.channel.typing():
             try:
                 clean_content = message.content.replace(f'<@{bot.user.id}>', '').strip()
+                user_input = clean_content if clean_content else "こんにちは"
                 
-                response = await asyncio.to_thread(
-                    client.models.generate_content,
-                    model='gemini-2.5-flash',
-                    contents=clean_content if clean_content else "こんにちは",
-                    config=dict(system_instruction=SYSTEM_INSTRUCTION)
-                )
-                
+                # Chat機能を使って安全に応答生成 (gemini-1.5-flashを使用)
+                def generate():
+                    chat = client.chats.create(
+                        model='gemini-1.5-flash',
+                        config=types.GenerateContentConfig(
+                            system_instruction=SYSTEM_INSTRUCTION
+                        )
+                    )
+                    return chat.send_message(user_input)
+
+                response = await asyncio.to_thread(generate)
                 await message.reply(response.text)
             except Exception as e:
                 print(f"Error: {e}")
