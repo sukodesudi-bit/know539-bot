@@ -9,7 +9,7 @@ from google import genai
 # 非同期処理の衝突防止
 nest_asyncio.apply()
 
-# --- 1. Webサーバー設定 ---
+# --- 1. Webサーバー設定（Flaskをバックグラウンド実行） ---
 app = Flask(__name__)
 
 @app.route('/')
@@ -18,9 +18,9 @@ def home():
 
 def run_web():
     port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)
+    app.run(host="0.0.0.0", port=port, use_reloader=False)
 
-threading.Thread(target=run_web).start()
+threading.Thread(target=run_web, daemon=True).start()
 
 
 # --- 2. DiscordとGeminiの設定 ---
@@ -74,39 +74,39 @@ async def on_ready():
 
 @bot.event
 async def on_message(message):
-    # Bot自身の発言には反応しない
     if message.author.bot:
         return
 
-    # 1. 直接メンションされたかどうかの判定
+    # 1. メンション判定
     is_mentioned = bot.user.mentioned_in(message)
     
-    # 2. このBotの発言に対する返信（リプライ）かどうかの判定
+    # 2. リプライ判定
     is_reply_to_bot = False
     if message.reference and message.reference.resolved:
         if message.reference.resolved.author == bot.user:
             is_reply_to_bot = True
 
-    # メンション または 返信（リプライ）の時だけ反応
+    # メンション または リプライの時のみ応答
     if is_mentioned or is_reply_to_bot:
         print(f'メッセージ受信: {message.content}')
-        try:
-            # メンション表記（<@12345...>）を除去
-            clean_content = message.content.replace(f'<@{bot.user.id}>', '').strip()
-            user_input = clean_content if clean_content else "こんにちは"
+        
+        # 「入力中...」を表示する演出
+        async with message.channel.typing():
+            try:
+                clean_content = message.content.replace(f'<@{bot.user.id}>', '').strip()
+                user_input = clean_content if clean_content else "こんにちは"
 
-            response = client.models.generate_content(
-                model='gemini-2.5-flash',
-                contents=user_input,
-                config={'system_instruction': SYSTEM_INSTRUCTION}
-            )
-            
-            # 返信（リプライ）として送信
-            await message.reply(response.text)
-            print('返信成功！')
-        except Exception as e:
-            print(f'APIエラー発生: {e}')
-            await message.reply(f"う、うおw エラー出たんだが、、、w\n```{e}```")
+                response = client.models.generate_content(
+                    model='gemini-2.5-flash',
+                    contents=user_input,
+                    config={'system_instruction': SYSTEM_INSTRUCTION}
+                )
+                
+                await message.reply(response.text)
+                print('返信成功！')
+            except Exception as e:
+                print(f'APIエラー発生: {e}')
+                await message.reply(f"う、うおw エラー出たんだが、、、w\n```{e}```")
 
-# ボット起動
+# ボットを起動
 bot.run(DISCORD_TOKEN)
