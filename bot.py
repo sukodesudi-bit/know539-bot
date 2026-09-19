@@ -1,31 +1,39 @@
 import os
-import asyncio
 import threading
+import nest_asyncio
 from flask import Flask
 import discord
 from discord.ext import commands
 from google import genai
-from google.genai import types
 
-# --- Webサーバー設定（Renderのヘルスチェック用）---
+# 非同期イベントループのネスト（干渉防止）を許可
+nest_asyncio.apply()
+
+# --- 1. Webサーバー設定 ---
 app = Flask(__name__)
 
 @app.route('/')
 def home():
-    return "Bot is alive!"
+    return "539 Bot is running!"
 
-def run_flask():
-    port = int(os.environ.get("PORT", 8080))
-    app.run(host='0.0.0.0', port=port)
+def run_web():
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
 
-# バックグラウンドでFlaskを起動
-threading.Thread(target=run_flask, daemon=True).start()
+# バックグラウンドでWebサーバーを動かす
+threading.Thread(target=run_web).start()
 
-# --- Gemini API設定 ---
+
+# --- 2. DiscordとGeminiの設定 ---
+DISCORD_TOKEN = os.environ.get("DISCORD_TOKEN")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+
 client = genai.Client(api_key=GEMINI_API_KEY)
 
-# --- 539のシステムプロンプト ---
+intents = discord.Intents.default()
+intents.message_content = True
+bot = commands.Bot(command_prefix="!", intents=intents)
+
 SYSTEM_INSTRUCTION = """
 あなたはDiscordサーバーのメンバー「know539神」になりきって応答してください。以下の設定と特徴を厳格に守り、リアルな人間として自然に会話してください。
 
@@ -60,44 +68,35 @@ SYSTEM_INSTRUCTION = """
 「俺レベルになると世界が奇妙に見えてくるんだよね。どほほほw」
 """
 
-# --- Discord Bot設定 ---
-intents = discord.Intents.default()
-intents.message_content = True
-bot = commands.Bot(command_prefix="!", intents=intents)
-
 @bot.event
 async def on_ready():
-    print(f'Logged in as {bot.user.name}')
+    print(f'Logged in as {bot.user}')
+    print('【539神】起動完了！Discordで話しかけてみてください。')
 
 @bot.event
 async def on_message(message):
-    if message.author == bot.user:
+    if message.author.bot:
         return
 
-    if bot.user.mentioned_in(message) or isinstance(message.channel, discord.DMChannel):
-        async with message.channel.typing():
-            try:
-                clean_content = message.content.replace(f'<@{bot.user.id}>', '').strip()
-                user_input = clean_content if clean_content else "こんにちは"
-                
-                # モデル名を gemini-3.6-flash に設定
-                def generate():
-                    return client.models.generate_content(
-                        model='gemini-3.6-flash',
-                        contents=user_input,
-                        config=types.GenerateContentConfig(
-                            system_instruction=SYSTEM_INSTRUCTION
-                        )
-                    )
+    is_mentioned = bot.user.mentioned_in(message)
+    is_kw1 = "539" in message.content
+    is_kw2 = "神" in message.content
 
-                response = await asyncio.to_thread(generate)
-                await message.reply(response.text)
-            except Exception as e:
-                err_msg = f"【エラー詳細】\n```{str(e)}```"
-                print(err_msg)
-                await message.reply(err_msg[:2000])
+    if is_mentioned or is_kw1 or is_kw2:
+        print(f'メッセージ受信: {message.content}')
+        try:
+            clean_content = message.content.replace(f'<@{bot.user.id}>', '').strip()
+            user_input = clean_content if clean_content else "こんにちは"
 
-    await bot.process_commands(message)
+            response = client.models.generate_content(
+                model='gemini-2.5-flash',
+                contents=user_input,
+                config={'system_instruction': SYSTEM_INSTRUCTION}
+            )
+            await message.reply(response.text)
+            print('返信完了！')
+        except Exception as e:
+            print(f'送信時エラー詳細: {e}')
 
-DISCORD_TOKEN = os.environ.get("DISCORD_TOKEN")
+# ボットを起動
 bot.run(DISCORD_TOKEN)
