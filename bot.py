@@ -17,6 +17,7 @@ def run_web():
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port, use_reloader=False)
 
+# バックグラウンドでWebサーバーを動かす
 threading.Thread(target=run_web, daemon=True).start()
 
 
@@ -92,17 +93,14 @@ async def on_message(message):
                 clean_content = message.content.replace(f'<@{bot.user.id}>', '').strip()
                 user_input = clean_content if clean_content else "こんにちは"
 
-                # 同期関数としてGemini API呼出しを定義
                 def generate():
                     return client.models.generate_content(
-                        model='gemini-2.5-flash',
+                        model='gemini-2.0-flash',
                         contents=user_input,
                         config={'system_instruction': SYSTEM_INSTRUCTION}
                     )
 
-                # 別スレッドで安全に実行
                 response = await asyncio.to_thread(generate)
-                
                 await message.reply(response.text)
                 print('返信成功！')
             except Exception as e:
