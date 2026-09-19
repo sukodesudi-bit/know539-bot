@@ -6,7 +6,7 @@ import discord
 from discord.ext import commands
 from google import genai
 
-# 非同期イベントループのネスト（干渉防止）を許可
+# 非同期処理の衝突防止
 nest_asyncio.apply()
 
 # --- 1. Webサーバー設定 ---
@@ -20,7 +20,6 @@ def run_web():
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
 
-# バックグラウンドでWebサーバーを動かす
 threading.Thread(target=run_web).start()
 
 
@@ -71,20 +70,28 @@ SYSTEM_INSTRUCTION = """
 @bot.event
 async def on_ready():
     print(f'Logged in as {bot.user}')
-    print('【539神】起動完了！Discordで話しかけてみてください。')
+    print('【539神】起動完了！')
 
 @bot.event
 async def on_message(message):
+    # Bot自身の発言には反応しない
     if message.author.bot:
         return
 
+    # 1. 直接メンションされたかどうかの判定
     is_mentioned = bot.user.mentioned_in(message)
-    is_kw1 = "539" in message.content
-    is_kw2 = "神" in message.content
+    
+    # 2. このBotの発言に対する返信（リプライ）かどうかの判定
+    is_reply_to_bot = False
+    if message.reference and message.reference.resolved:
+        if message.reference.resolved.author == bot.user:
+            is_reply_to_bot = True
 
-    if is_mentioned or is_kw1 or is_kw2:
+    # メンション または 返信（リプライ）の時だけ反応
+    if is_mentioned or is_reply_to_bot:
         print(f'メッセージ受信: {message.content}')
         try:
+            # メンション表記（<@12345...>）を除去
             clean_content = message.content.replace(f'<@{bot.user.id}>', '').strip()
             user_input = clean_content if clean_content else "こんにちは"
 
@@ -93,10 +100,13 @@ async def on_message(message):
                 contents=user_input,
                 config={'system_instruction': SYSTEM_INSTRUCTION}
             )
+            
+            # 返信（リプライ）として送信
             await message.reply(response.text)
-            print('返信完了！')
+            print('返信成功！')
         except Exception as e:
-            print(f'送信時エラー詳細: {e}')
+            print(f'APIエラー発生: {e}')
+            await message.reply(f"う、うおw エラー出たんだが、、、w\n```{e}```")
 
-# ボットを起動
+# ボット起動
 bot.run(DISCORD_TOKEN)
