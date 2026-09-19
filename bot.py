@@ -1,6 +1,7 @@
 import os
 import asyncio
 import threading
+import traceback
 from flask import Flask
 import discord
 from discord.ext import commands
@@ -80,20 +81,22 @@ async def on_message(message):
                 clean_content = message.content.replace(f'<@{bot.user.id}>', '').strip()
                 user_input = clean_content if clean_content else "こんにちは"
                 
-                # Chat機能を使って安全に応答生成
+                # generate_contentを使用し、例外を画面（ログ）に出力
                 def generate():
-                    chat = client.chats.create(
-                        model='gemini-1.5-flash',
+                    return client.models.generate_content(
+                        model='gemini-2.5-flash',
+                        contents=user_input,
                         config=types.GenerateContentConfig(
                             system_instruction=SYSTEM_INSTRUCTION
                         )
                     )
-                    return chat.send_message(user_input)
 
                 response = await asyncio.to_thread(generate)
                 await message.reply(response.text)
             except Exception as e:
-                print(f"Error: {e}")
+                print("=== DETAILED ERROR LOG ===")
+                traceback.print_exc()
+                print("==========================")
                 await message.reply("う、うおw なんかエラー出たんだが、、、w")
 
     await bot.process_commands(message)
