@@ -4,7 +4,8 @@ import threading
 from flask import Flask
 import discord
 from discord.ext import commands
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 
 # --- Webサーバー設定（Renderのヘルスチェック用）---
 app = Flask(__name__)
@@ -22,7 +23,7 @@ threading.Thread(target=run_flask, daemon=True).start()
 
 # --- Gemini API設定 ---
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
-genai.configure(api_key=GEMINI_API_KEY)
+client = genai.Client(api_key=GEMINI_API_KEY)
 
 # --- 539のシステムプロンプト ---
 SYSTEM_INSTRUCTION = """
@@ -59,12 +60,6 @@ SYSTEM_INSTRUCTION = """
 「俺レベルになると世界が奇妙に見えてくるんだよね。どほほほw」
 """
 
-# Geminiモデル構築
-model = genai.GenerativeModel(
-    model_name='gemini-1.5-flash',
-    system_instruction=SYSTEM_INSTRUCTION
-)
-
 # --- Discord Bot設定 ---
 intents = discord.Intents.default()
 intents.message_content = True
@@ -85,11 +80,17 @@ async def on_message(message):
                 clean_content = message.content.replace(f'<@{bot.user.id}>', '').strip()
                 user_input = clean_content if clean_content else "こんにちは"
                 
-                # Geminiから回答を取得
-                response = await asyncio.to_thread(
-                    model.generate_content,
-                    user_input
-                )
+                # モデル名を gemini-3.6-flash に設定
+                def generate():
+                    return client.models.generate_content(
+                        model='gemini-3.6-flash',
+                        contents=user_input,
+                        config=types.GenerateContentConfig(
+                            system_instruction=SYSTEM_INSTRUCTION
+                        )
+                    )
+
+                response = await asyncio.to_thread(generate)
                 await message.reply(response.text)
             except Exception as e:
                 err_msg = f"【エラー詳細】\n```{str(e)}```"
