@@ -266,7 +266,7 @@ async def on_message(message):
 
                 def generate():
                     return client.models.generate_content(
-                        model='gemini-3.6-flash',
+                        model='gemini-3.1-flash-lite',
                         contents=user_input,
                         config={'system_instruction': SYSTEM_INSTRUCTION}
                     )
