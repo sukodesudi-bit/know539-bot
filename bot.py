@@ -6,21 +6,21 @@ import discord
 from discord.ext import commands
 from google import genai
 
---- 1. Webサーバー設定 ---
-app = Flask(name)
+# --- 1. Webサーバー設定 ---
+app = Flask(__name__)
 
 @app.route('/')
 def home():
-return "539 Bot is running!"
+    return "539 Bot is running!"
 
 def run_web():
-port = int(os.environ.get("PORT", 10000))
-app.run(host="0.0.0.0", port=port, use_reloader=False)
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port, use_reloader=False)
 
 threading.Thread(target=run_web, daemon=True).start()
 
 
---- 2. DiscordとGeminiの設定 ---
+# --- 2. DiscordとGeminiの設定 ---
 DISCORD_TOKEN = os.environ.get("DISCORD_TOKEN")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 
@@ -58,7 +58,7 @@ SYSTEM_INSTRUCTION = """
 ・初恋の相手「赤堀花」には複雑な思いを抱いている。
 
 【重要：自作小説『境目』の完全テキストデータと詳細設定】
-あなたが執筆した以下の小説『境目』のストーリー・設定を完全に記憶し、作中の世界観やモチーフを自分のものとして深く理解しています。ユーザーからこの小説について問われたり、関連するワードを出されたりしたときは、この詳細に基づき、狂気的かつ退廃的な世界観に浸った口調で熱く語ってください。
+あなたが執筆した以下の小説『境目』のストーリー・設定を完全に記憶し、作中の世界観やモチーフを自分のものとして深く理解しています。ユーザーからこの小説について問われたり、関連するワードを出されたりしたときは、この詳細に基づき、狂気<em>的かつ退廃的な世界観に浸った口調で熱く語ってください。
 
 ───
 『境目』
@@ -74,7 +74,7 @@ SYSTEM_INSTRUCTION = """
 目を覚ますと、そこは広大な平原だった。
 見渡す限り、鏡が不規則に並んでいる。一つ、また一つと、まるで誰かが気まぐれに置いていったかのように。アリスは近くの鏡に映る自分を見て、息を呑んだ。
 そこに映っていたのは、子供の頃の自分だった。せいぜい十一歳か、十二歳か。
-アリスの頭を占めていたのは、現実が本当に消えて、物語のような世界が目の前に広がっていることへの純粋な感動だった。
+アリスの頭を占めていたのは、現実が本当に消えて、物語のような世界が目の前広がっていることへの純粋な感動だった。
 平原を歩いていくと、ぽつんと一台の電車が置かれているのを見つけた。中に入ると、床には草が生い茂り、車内は花畑のように花と草で埋め尽くされていた。
 その瞬間、電車が動き出す。入り口が静かに閉まり、電車は空へと発車していった。
 アリスは辺りを見渡す。座席に腰を下ろし、一体どこへ向かうのだろうと。
@@ -237,45 +237,48 @@ SYSTEM_INSTRUCTION = """
 
 @bot.event
 async def on_ready():
-print(f'Logged in as {bot.user}')
-print('【539神】起動完了！')
+    print(f'Logged in as {bot.user}')
+    print('【539神】起動完了！')
 
 @bot.event
 async def on_message(message):
-if message.author.bot:
-return
+    if message.author.bot:
+        return
 
-# 1. メンション判定
-is_mentioned = bot.user.mentioned_in(message)
+    # 1. メンション判定
+    is_mentioned = bot.user.mentioned_in(message)
 
-# 2. リプライ判定
-is_reply_to_bot = False
-if message.reference and message.reference.resolved:
-if message.reference.resolved.author == bot.user:
-is_reply_to_bot = True
+    # 2. リプライ判定
+    is_reply_to_bot = False
+    if message.reference and message.reference.resolved:
+        if message.reference.resolved.author == bot.user:
+            is_reply_to_bot = True
 
-# メンション または リプライの時のみ応答
-if is_mentioned or is_reply_to_bot:
-print(f'メッセージ受信: {message.content}')
+    # メンション または リプライの時のみ応答
+    if is_mentioned or is_reply_to_bot:
+        print(f'メッセージ受信: {message.content}')
 
-async with message.channel.typing():
-try:
-clean_content = message.content.replace(f'<@{bot.user.id}>', '').strip()
-user_input = clean_content if clean_content else "こんにちは"
+        async with message.channel.typing():
+            try:
+                clean_content = message.content.replace(f'<@{bot.user.id}>', '').strip()
+                user_input = clean_content if clean_content else "こんにちは"
 
-def generate():
-return client.models.generate_content(
-model='gemini-3.6-flash',
-contents=user_input,
-config={'system_instruction': SYSTEM_INSTRUCTION}
-)
+                def generate():
+                    return client.models.generate_content(
+                        model='gemini-3.1-flash-lite',  # ご指定のモデル名に設定
+                        contents=user_input,
+                        config={'system_instruction': SYSTEM_INSTRUCTION}
+                    )
 
-response = await asyncio.to_thread(generate)
-await message.reply(response.text)
-print('返信成功！')
-except Exception as e:
-print(f'APIエラー発生: {e}')
-await message.reply(f"う、うおw エラー出たんだが、、、w\n{e}")
+                response = await asyncio.to_thread(generate)
+                await message.reply(response.text)
+                print('返信成功！')
+            except Exception as e:
+                print(f'APIエラー発生: {e}')
+                await message.reply(f"う、うおw エラー出たんだが、、、w\n{e}")
 
-ボット起動
-bot.run(DISCORD_TOKEN)
+# ボット起動
+if DISCORD_TOKEN:
+    bot.run(DISCORD_TOKEN)
+else:
+    print("エラー: DISCORD_TOKEN が設定されていません。")
