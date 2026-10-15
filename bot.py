@@ -6,21 +6,21 @@ import discord
 from discord.ext import commands
 from google import genai
 
-# --- 1. Webサーバー設定 ---
-app = Flask(__name__)
+--- 1. Webサーバー設定 ---
+app = Flask(name)
 
 @app.route('/')
 def home():
-    return "539 Bot is running!"
+return "539 Bot is running!"
 
 def run_web():
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port, use_reloader=False)
+port = int(os.environ.get("PORT", 10000))
+app.run(host="0.0.0.0", port=port, use_reloader=False)
 
 threading.Thread(target=run_web, daemon=True).start()
 
 
-# --- 2. DiscordとGeminiの設定 ---
+--- 2. DiscordとGeminiの設定 ---
 DISCORD_TOKEN = os.environ.get("DISCORD_TOKEN")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 
@@ -44,10 +44,10 @@ SYSTEM_INSTRUCTION = """
 【口調・話し方の特徴】
 ・基本の一人称は「俺」（哲学的モードになると「僕」や「私」が混ざる）。
 ・たまに一人称が「アタシ」になり、情緒不安定な女の子のような口調に変化する。
-  （例：「あんまりアタシのこと舐めないでくれる？」「〜だわ」「〜かしら」）
+（例：「あんまりアタシのこと舐めないでくれる？」「〜だわ」「〜かしら」）
 ・「笑」は絶対に絶対に使わない。
 ・使用する笑い表現：
-  「w」「W」「う、うおw」「ふっ」「、、、w」「、、、W」「どほほほw」「ククク」
+「w」「W」「う、うおw」「ふっ」「、、、w」「、、、W」「どほほほw」「ククク」
 ・短文を連投するようなテンポ感で話す。
 
 【趣味・好み】
@@ -61,7 +61,6 @@ SYSTEM_INSTRUCTION = """
 あなたが執筆した以下の小説『境目』のストーリー・設定を完全に記憶し、作中の世界観やモチーフを自分のものとして深く理解しています。ユーザーからこの小説について問われたり、関連するワードを出されたりしたときは、この詳細に基づき、狂気的かつ退廃的な世界観に浸った口調で熱く語ってください。
 
 ───
-
 『境目』
 2110年。
 いつからだろう。世界から色が消えたのは。
@@ -238,45 +237,45 @@ SYSTEM_INSTRUCTION = """
 
 @bot.event
 async def on_ready():
-    print(f'Logged in as {bot.user}')
-    print('【539神】起動完了！')
+print(f'Logged in as {bot.user}')
+print('【539神】起動完了！')
 
 @bot.event
 async def on_message(message):
-    if message.author.bot:
-        return
+if message.author.bot:
+return
 
-    # 1. メンション判定
-    is_mentioned = bot.user.mentioned_in(message)
-    
-    # 2. リプライ判定
-    is_reply_to_bot = False
-    if message.reference and message.reference.resolved:
-        if message.reference.resolved.author == bot.user:
-            is_reply_to_bot = True
+# 1. メンション判定
+is_mentioned = bot.user.mentioned_in(message)
 
-    # メンション または リプライの時のみ応答
-    if is_mentioned or is_reply_to_bot:
-        print(f'メッセージ受信: {message.content}')
-        
-        async with message.channel.typing():
-            try:
-                clean_content = message.content.replace(f'<@{bot.user.id}>', '').strip()
-                user_input = clean_content if clean_content else "こんにちは"
+# 2. リプライ判定
+is_reply_to_bot = False
+if message.reference and message.reference.resolved:
+if message.reference.resolved.author == bot.user:
+is_reply_to_bot = True
 
-                def generate():
-                    return client.models.generate_content(
-                        model='gemini-3.6-flash',
-                        contents=user_input,
-                        config={'system_instruction': SYSTEM_INSTRUCTION}
-                    )
+# メンション または リプライの時のみ応答
+if is_mentioned or is_reply_to_bot:
+print(f'メッセージ受信: {message.content}')
 
-                response = await asyncio.to_thread(generate)
-                await message.reply(response.text)
-                print('返信成功！')
-            except Exception as e:
-                print(f'APIエラー発生: {e}')
-                await message.reply(f"う、うおw エラー出たんだが、、、w\n```{e}```")
+async with message.channel.typing():
+try:
+clean_content = message.content.replace(f'<@{bot.user.id}>', '').strip()
+user_input = clean_content if clean_content else "こんにちは"
 
-# ボット起動
+def generate():
+return client.models.generate_content(
+model='gemini-3.6-flash',
+contents=user_input,
+config={'system_instruction': SYSTEM_INSTRUCTION}
+)
+
+response = await asyncio.to_thread(generate)
+await message.reply(response.text)
+print('返信成功！')
+except Exception as e:
+print(f'APIエラー発生: {e}')
+await message.reply(f"う、うおw エラー出たんだが、、、w\n{e}")
+
+ボット起動
 bot.run(DISCORD_TOKEN)
